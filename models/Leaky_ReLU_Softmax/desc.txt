@@ -1,0 +1,2 @@
+Leaky ReLU in hidden layers and Softmax in output layer
+Training Time = 1212.68s

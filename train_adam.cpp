@@ -2,6 +2,7 @@
 #include <cassert>
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
 #include <fstream>
 #include <iostream>
 #include <ostream>
@@ -41,7 +42,7 @@ void softmax(std::vector<float> &z) {
 
   // First loop: Compute exponentials and the sum of exponentials (denominator)
   for (auto &j : z) {
-    j = exp(j - max_z); // Subtract max_z for numerical stability
+    j = exp(max_z - j); // Subtract max_z for numerical stability
     deno += j;
   }
 
@@ -68,13 +69,22 @@ float Leaky_ReLU_derivative(float x) { return (x > 0) ? 1 : ALPHA; }
 // Initialize weights with random values
 void initialize_weights(std::vector<std::vector<float>> &weights, int rows,
                         int cols) {
-  std::mt19937 rng(223);
+  std::mt19937 rng(123);
   std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
   weights.clear();
   weights.resize(rows, std::vector<float>(cols));
   for (auto &row : weights)
     for (auto &w : row)
       w = dist(rng);
+}
+
+void initialize_VM_weights(std::vector<std::vector<float>> &weights, int rows,
+                           int cols) {
+  weights.clear();
+  weights.resize(rows, std::vector<float>(cols));
+  for (auto &row : weights)
+    for (auto &w : row)
+      w = 0.0f;
 }
 
 void custom_train(unsigned int number_data,
@@ -85,8 +95,14 @@ void custom_train(unsigned int number_data,
                   std::vector<std::vector<std::vector<float>>> &weights,
                   std::vector<std::vector<float>> &biases,
                   unsigned int hidden_layers_number,
-                  unsigned int hidden_layer_size, float &loss) {
+                  unsigned int hidden_layer_size, float &loss,
+                  std::vector<std::vector<std::vector<float>>> &weights_v,
+                  std::vector<std::vector<std::vector<float>>> &weights_m,
+                  std::vector<std::vector<float>> &biases_v,
+                  std::vector<std::vector<float>> &biases_m,
+				  int &c) {
 
+  float beta1 = 0.9f, beta2 = 0.999f, epsilon = 1e-7;
   loss = 0.0f;
   for (int t = 0; t < number_data; t++) {
     auto output = training_data[t];
@@ -107,7 +123,7 @@ void custom_train(unsigned int number_data,
         outputs[i][j] = biases[i][j];
         while (k--)
           outputs[i][j] += weights[i][j][k] * output[k];
-         // outputs[i][j] = sigmoid(outputs[i][j]);
+        // outputs[i][j] = sigmoid(outputs[i][j]);
         outputs[i][j] = Leaky_ReLU(outputs[i][j]);
       }
       output = outputs[i];
@@ -117,9 +133,11 @@ void custom_train(unsigned int number_data,
       outputs[hidden_layers_number][j] = biases[hidden_layers_number][j];
       int k = hidden_layer_size;
       while (k--)
-        outputs[hidden_layers_number][j] += weights[hidden_layers_number][j][k] * output[k];
-       //outputs[hidden_layers_number][j] = sigmoid(outputs[hidden_layers_number][j]);
-	}
+        outputs[hidden_layers_number][j] +=
+            weights[hidden_layers_number][j][k] * output[k];
+      // outputs[hidden_layers_number][j] =
+      // sigmoid(outputs[hidden_layers_number][j]);
+    }
 
     // softmax
     softmax(outputs[hidden_layers_number]);
@@ -127,23 +145,40 @@ void custom_train(unsigned int number_data,
     // Compute errors
     for (int i = 0; i < output_size; i++) {
       // sigmoid
-	  //loss += (output_data[t][i] - outputs[hidden_layers_number][i]) * (output_data[t][i] - outputs[hidden_layers_number][i]);
-      //outputs[hidden_layers_number][i] = sigmoid_derivative(outputs[hidden_layers_number][i]) * (output_data[t][i] - outputs[hidden_layers_number][i]);
+      // loss += (output_data[t][i] - outputs[hidden_layers_number][i]) * (output_data[t][i] - outputs[hidden_layers_number][i]);
+      // outputs[hidden_layers_number][i] = sigmoid_derivative(outputs[hidden_layers_number][i]) * (output_data[t][i] - outputs[hidden_layers_number][i]);
 
       // softmax
       if (output_data[t][i] == 1.0f) {
+		  std::cout << outputs[hidden_layers_number][i] << std::endl;
         loss += -log(outputs[hidden_layers_number][i]);
       }
 
-      outputs[hidden_layers_number][i] = (output_data[t][i] - outputs[hidden_layers_number][i]);
+      outputs[hidden_layers_number][i] = (outputs[hidden_layers_number][i] - output_data[t][i]);
 
       // bias updating
-      biases[hidden_layers_number][i] +=
-          LEARNING_RATE * outputs[hidden_layers_number][i];
+      biases_m[hidden_layers_number][i] = beta1 * biases_m[hidden_layers_number][i] + (1 - beta1) * outputs[hidden_layers_number][i]; // Update first moment
+      biases_v[hidden_layers_number][i] = beta2 * biases_v[hidden_layers_number][i] + (1 - beta2) * outputs[hidden_layers_number][i] * outputs[hidden_layers_number][i]; // Update second moment
+
+      float m_hat = biases_m[hidden_layers_number][i] / (1 - std::pow(beta1, c));
+      float v_hat = biases_v[hidden_layers_number][i] / (1 - std::pow(beta2, c));
+
+      biases[hidden_layers_number][i] -= LEARNING_RATE * m_hat / (std::sqrt(v_hat) + epsilon);
+
+	  std::cout << outputs[hidden_layers_number][i] << "\t"
+	      << biases_m[hidden_layers_number][i] << "\t"
+	      << biases_v[hidden_layers_number][i] << "\t"
+	      <<  beta1 << "\t"
+	      <<  beta2 << "\t"
+	      <<  c << "\t"
+	      <<  (1 - std::pow(beta1, c))<< "\t"
+	      <<  (1 - std::pow(beta2, c))<< "\t"
+	      << m_hat << "\t"
+	      << v_hat << "\t" << std::endl;
     }
 
-	// MSE for sigmoid
-	//loss /= 10.0f;
+    // MSE for sigmoid
+    // loss /= 10.0f;
 
     for (int i = hidden_layers_number; i > 0; i--) {
       for (int j = 0; j < hidden_layer_size; j++) {
@@ -155,23 +190,53 @@ void custom_train(unsigned int number_data,
           k = hidden_layer_size;
         while (k--) {
           sum += weights[i][k][j] * outputs[i][k];
-          weights[i][k][j] += LEARNING_RATE * outputs[i - 1][j] * outputs[i][k];
+          // weight update
+          weights_m[i][k][j] = beta1 * weights_m[i][k][j] + (1 - beta1) * outputs[i][k] * outputs[i - 1][j]; // Update first moment
+          weights_v[i][k][j] = beta2 * weights_v[i][k][j] + (1 - beta2) * outputs[i][k] * outputs[i][k] * outputs[i - 1][j] * outputs[i - 1][j]; // Update second moment
+
+          float m_hat = weights_m[i][k][j] / (1 - std::pow(beta1, c));
+          float v_hat = weights_v[i][k][j] / (1 - std::pow(beta2, c));
+		  
+          weights[i][k][j] -= LEARNING_RATE * m_hat / (std::sqrt(v_hat) + epsilon);
+	  std::cout << "2" << weights[i][k][j]  << std::endl;
+
+          // weights[i][k][j] += LEARNING_RATE * outputs[i - 1][j] * outputs[i][k];
         }
         // sigmoid
-        //outputs[i - 1][j] = sum * sigmoid_derivative(outputs[i - 1][j]);
+        // outputs[i - 1][j] = sum * sigmoid_derivative(outputs[i - 1][j]);
 
         // ReLU
         outputs[i - 1][j] = sum * Leaky_ReLU_derivative(outputs[i - 1][j]);
-        biases[i - 1][j] += LEARNING_RATE * outputs[i - 1][j];
+
+        // bias updating
+        biases_m[i - 1][j] = beta1 * biases_m[i - 1][j] + (1 - beta1) * outputs[i - 1][j]; // Update first moment
+        biases_v[i - 1][j] = beta2 * biases_v[i - 1][j] + (1 - beta2) * outputs[i - 1][j] * outputs[i - 1][j]; // Update second moment
+
+        float m_hat = biases_m[i - 1][j] / (1 - std::pow(beta1, c));
+        float v_hat = biases_v[i - 1][j] / (1 - std::pow(beta2, c));
+
+        biases[i - 1][j] -= LEARNING_RATE * m_hat / (std::sqrt(v_hat) + epsilon);
+	  std::cout << "3" << biases[i - 1][j]  << std::endl;
+
+        // biases[i - 1][j] += LEARNING_RATE * outputs[i - 1][j];
       }
     }
 
     for (int j = 0; j < input_size; j++) {
       int k = hidden_layer_size;
       while (k--) {
-        weights[0][k][j] += LEARNING_RATE * training_data[t][j] * outputs[0][k];
+          weights_m[0][k][j] = beta1 * weights_m[0][k][j] + (1 - beta1) * outputs[0][k] * training_data[t][j]; // Update first moment
+          weights_v[0][k][j] = beta2 * weights_v[0][k][j] + (1 - beta2) * outputs[0][k] * outputs[0][k] * training_data[t][j] * training_data[t][j]; // Update second moment
+
+          float m_hat = weights_m[0][k][j] / (1 - std::pow(beta1, c));
+          float v_hat = weights_v[0][k][j] / (1 - std::pow(beta2, c));
+		  
+          weights[0][k][j] -= LEARNING_RATE * m_hat / (std::sqrt(v_hat) + epsilon);
+	  		std::cout << "4" << weights[0][k][j]   << std::endl;
+        //weights[0][k][j] += LEARNING_RATE * training_data[t][j] * outputs[0][k];
       }
     }
+	c++;
   }
 
   loss /= number_data;
@@ -199,6 +264,8 @@ custom_test(std::vector<float> testing_data, unsigned int input_size,
       output2[j] = biases[i][j];
       while (k--)
         output2[j] += weights[i][j][k] * output1[k];
+      // output2[j] = sigmoid(output2[j]);
+      // ReLU
       output2[j] = Leaky_ReLU(output2[j]);
     }
     output1 = output2;
@@ -210,7 +277,7 @@ custom_test(std::vector<float> testing_data, unsigned int input_size,
     output2[j] = biases[hidden_layers_number][j];
     while (k--)
       output2[j] += weights[hidden_layers_number][j][k] * output1[k];
-    //output2[j] = sigmoid(output2[j]);
+    // output2[j] = sigmoid(output2[j]);
   }
   softmax(output2);
 
@@ -418,6 +485,28 @@ int main() {
   initialize_weights(i, 10, 16);
   weights.push_back(i);
 
+  std::vector<std::vector<float>> biases_v(2, std::vector(16, 0.0f));
+  biases_v.push_back(std::vector<float>(10, 0.0f));
+
+  std::vector<std::vector<float>> biases_m(2, std::vector(16, 0.0f));
+  biases_m.push_back(std::vector<float>(10, 0.0f));
+
+  std::vector<std::vector<std::vector<float>>> weights_v;
+  initialize_VM_weights(i, 16, 784);
+  weights_v.push_back(i);
+  initialize_VM_weights(i, 16, 16);
+  weights_v.push_back(i);
+  initialize_VM_weights(i, 10, 16);
+  weights_v.push_back(i);
+
+  std::vector<std::vector<std::vector<float>>> weights_m;
+  initialize_VM_weights(i, 16, 784);
+  weights_m.push_back(i);
+  initialize_VM_weights(i, 16, 16);
+  weights_m.push_back(i);
+  initialize_VM_weights(i, 10, 16);
+  weights_m.push_back(i);
+
   load_from_csv("dataset/train.csv", labels, training_data);
   read_labels_from_emnist("dataset/gzip/emnist-digits-train-labels-idx1-ubyte",
                           labels);
@@ -439,17 +528,17 @@ int main() {
     std::cout << "Error in opening file" << std::endl;
   }
 
+  int c = 1;
   for (int i = 0; i < EPOCHS; i++) {
     float train_loss;
     custom_train(labels.size(), training_data, 784, labels, 10, weights, biases,
-                 2, 16, train_loss);
-
+                 2, 16, train_loss, weights_v, weights_m, biases_v, biases_m, c);
 
     int wrong = 0;
     float test_loss = 0;
     for (int i = 0; i < test_labels.size(); i++) {
       // std::cout << "Running: " << i << std::endl;
-		std::vector<float> result =
+      std::vector<float> result =
           custom_test(test_images[i], 784, 10, weights, biases, 2, 16);
 
       int res_max = 0, label_max = 0;
@@ -460,29 +549,31 @@ int main() {
         if (result[j] > result[res_max])
           res_max = j;
 
-	  	//test_loss += (test_labels[i][j] - result[j]) * (test_labels[i][j] - result[j]);
+        // test_loss += (test_labels[i][j] - result[j]) * (test_labels[i][j] -
+        // result[j]);
       }
 
-	  //test_loss /= 10.0f;
+      // test_loss /= 10.0f;
 
-	  test_loss += -log(result[label_max]);
+      test_loss += -log(result[label_max]);
 
       if (res_max != label_max) {
         wrong++;
-		error_images_indexes << label_max << std::endl;
-	  }
+        error_images_indexes << label_max << std::endl;
+      }
     }
 
-	test_loss /= test_images.size();
+    test_loss /= test_images.size();
 
-    std::cout << "Epoch " << i + 1 << "/" << EPOCHS << " - Training Loss: " << train_loss << std::endl;
+    std::cout << "Epoch " << i + 1 << "/" << EPOCHS
+              << " - Training Loss: " << train_loss << std::endl;
 
     std::cout << "Total images: " << test_images.size() << std::endl;
     std::cout << "Total wrong: " << wrong << std::endl;
     std::cout << "Test loss: " << test_loss << std::endl;
 
-    log_file << train_loss << '\t' << test_loss << '\t' << ((float)wrong) / test_images.size()
-        << std::endl;
+    log_file << train_loss << '\t' << test_loss << '\t'
+             << ((float)wrong) / test_images.size() << std::endl;
   }
 
   error_images_indexes.close();

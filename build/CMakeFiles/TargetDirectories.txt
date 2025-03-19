@@ -1,3 +1,0 @@
-C:/Users/Nitro/Desktop/6th/ai lab/AIDeepLearningProblem/build/CMakeFiles/AIDEEPLEARNINGPROBLEM.dir
-C:/Users/Nitro/Desktop/6th/ai lab/AIDeepLearningProblem/build/CMakeFiles/ALL_BUILD.dir
-C:/Users/Nitro/Desktop/6th/ai lab/AIDeepLearningProblem/build/CMakeFiles/ZERO_CHECK.dir

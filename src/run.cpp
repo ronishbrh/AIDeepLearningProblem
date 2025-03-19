@@ -5,7 +5,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include <intrin.h>
+//#include <intrin.h>
 #include <opencv2/opencv.hpp>
 #include <algorithm>
 
@@ -22,25 +22,29 @@ bool read_images_from_emnist(const std::string &filename,
   if (file.is_open()) {
     int magic_number;
     file.read(reinterpret_cast<char *>(&magic_number), 4);
-    magic_number = _byteswap_ulong(magic_number);
+    //magic_number = _byteswap_ulong(magic_number);
+    magic_number = __builtin_bswap32(magic_number);
 
     // cout << magic_number << endl;
     assert(magic_number == 0x803);
 
     int number_of_data;
     file.read(reinterpret_cast<char *>(&number_of_data), 4);
-    number_of_data = _byteswap_ulong(number_of_data);
+    //number_of_data = _byteswap_ulong(number_of_data);
+    number_of_data = __builtin_bswap32(number_of_data);
     cout << number_of_data << endl;
 
     int height;
     file.read(reinterpret_cast<char *>(&height), 4);
-    height = _byteswap_ulong(height);
+    //height = _byteswap_ulong(height);
+    height = __builtin_bswap32(height);
     cout << height << endl;
     assert(height == 28);
 
     int width;
     file.read(reinterpret_cast<char *>(&width), 4);
-    width = _byteswap_ulong(width);
+    //width = _byteswap_ulong(width);
+    width = __builtin_bswap32(width);
     cout << width << endl;
     assert(width == 28);
 
@@ -68,13 +72,15 @@ bool read_labels_from_emnist(const std::string &filename,
   if (file.is_open()) {
     int magic_number;
     file.read(reinterpret_cast<char *>(&magic_number), 4);
-    magic_number = _byteswap_ulong(magic_number);
+    //magic_number = _byteswap_ulong(magic_number);
+    magic_number = __builtin_bswap32(magic_number);
 
     assert(magic_number == 0x801);
 
     int number_of_data;
     file.read(reinterpret_cast<char *>(&number_of_data), 4);
-    number_of_data = _byteswap_ulong(number_of_data);
+    //number_of_data = _byteswap_ulong(number_of_data);
+    number_of_data = __builtin_bswap32(number_of_data);
 
     for (int i = 0; i < number_of_data; i++) {
       unsigned char num;
@@ -91,6 +97,7 @@ bool read_labels_from_emnist(const std::string &filename,
     return false;
   }
 }
+
 void read_wts_biases(const std::string &file_name,
                      std::vector<std::vector<std::vector<float>>> &weights,
                      std::vector<std::vector<float>> &biases) {
