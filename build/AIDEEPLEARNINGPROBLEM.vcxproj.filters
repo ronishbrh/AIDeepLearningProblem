@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="C:\Users\Nitro\Desktop\6th\ai lab\Handwritten Digit Prediction Project\AIDeepLearningProblem\src\run_windows.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\Nitro\Desktop\6th\ai lab\Handwritten Digit Prediction Project\AIDeepLearningProblem\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{A66A82E2-0B72-3BDF-A060-68713DD7F89F}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

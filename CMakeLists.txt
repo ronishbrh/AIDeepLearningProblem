@@ -10,7 +10,7 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 
 
 # Add the executable for the project
-add_executable(AIDEEPLEARNINGPROBLEM src/run.cpp)
+add_executable(AIDEEPLEARNINGPROBLEM src/run_windows.cpp)
 
 # Link OpenCV libraries to the project
 target_link_libraries(AIDEEPLEARNINGPROBLEM ${OpenCV_LIBS})

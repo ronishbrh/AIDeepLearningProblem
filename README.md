@@ -22,4 +22,14 @@ g++ run_linux.cpp `pkg-config --cflags --libs opencv4`; ./a.out
 ```
 ## In Windows
 ### For train.cpp
-### For run.cpp
+cl /EHsc train.cpp (must have MSVC cl comipler toolset)
+
+### For run_windows.cpp
+1. Install opencv
+2. Install CMake of relevant version
+3. Update the environment variables
+4. Write the CMakeLists.txt
+5. Build the cmake in build folder
+6. Run the built exe
+# For reference follow this link: https://www.youtube.com/watch?v=CnXUTG9XYGI
+
